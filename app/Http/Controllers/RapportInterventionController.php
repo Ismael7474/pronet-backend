@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\RapportIntervention;
 use App\Models\Intervention;
 use App\Models\Activite;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,9 +14,12 @@ class RapportInterventionController extends Controller
     // Liste tous les rapports d'intervention
     public function index()
     {
-        $rapports = RapportIntervention::with(['intervention', 'user'])
-                                       ->orderBy('created_at', 'desc')
-                                       ->get();
+        $rapports = RapportIntervention::with([
+            'intervention.client',
+            'user'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         return response()->json($rapports, 200);
     }
@@ -50,7 +54,6 @@ class RapportInterventionController extends Controller
             'resultat'           => $request->resultat,
             'observations'       => $request->observations,
             'duree_intervention' => $request->duree_intervention,
-            'created_at'         => now(),
         ]);
 
         // Mettre à jour le statut de l'intervention
@@ -64,7 +67,13 @@ class RapportInterventionController extends Controller
             $intervention->id,
             $intervention->id_client
         );
-
+        Notification::create([
+            'titre' => 'Rapport intervention',
+            'message' =>
+                Auth::user()->nom .
+                ' a terminé l’intervention ' .
+                $intervention->titre
+        ]);
         // Enregistrer dans intervention_user
         $intervention->techniciens()->syncWithoutDetaching([Auth::id()]);
 

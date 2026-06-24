@@ -26,7 +26,7 @@ return new class extends Migration
                 ->onDelete('set null');
             $table->string('action', 255);
             $table->string('module', 50);
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 

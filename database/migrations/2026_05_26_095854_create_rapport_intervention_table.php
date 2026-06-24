@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('resultat', ['resolu', 'partiel', 'non_resolu']);
             $table->text('observations')->nullable();
             $table->integer('duree_intervention')->nullable();
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 

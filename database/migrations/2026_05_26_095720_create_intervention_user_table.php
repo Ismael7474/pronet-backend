@@ -19,7 +19,7 @@ return new class extends Migration
                 ->constrained('users')
                 ->onDelete('cascade');
             $table->primary(['intervention_id', 'user_id']);
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
     });
     }
 

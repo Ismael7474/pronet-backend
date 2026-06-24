@@ -47,7 +47,7 @@ class ActiviteController extends Controller
     {
         $activites = Activite::with(['user', 'client'])
                              ->where('created_at', '>=', now()->subDays(30))
-                             ->orderBy('created_at', 'desc')
+                             ->orderBy('created_at', 'asc')
                              ->take(50)
                              ->get();
 
@@ -59,7 +59,7 @@ class ActiviteController extends Controller
     {
         $activites = Activite::with(['intervention', 'client'])
                              ->where('id_user', $id)
-                             ->orderBy('created_at', 'desc')
+                             ->orderBy('created_at', 'asc')
                              ->get();
 
         return response()->json($activites, 200);
@@ -70,7 +70,7 @@ class ActiviteController extends Controller
     {
         $activites = Activite::with(['user', 'intervention'])
                              ->where('id_client', $id)
-                             ->orderBy('created_at', 'desc')
+                             ->orderBy('created_at', 'asc')
                              ->get();
 
         return response()->json($activites, 200);

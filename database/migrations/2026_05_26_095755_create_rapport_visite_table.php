@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('materiel_necessaire');
             $table->decimal('estimation_cout', 10, 2)->nullable();
             $table->enum('faisable', ['oui', 'non']);
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 

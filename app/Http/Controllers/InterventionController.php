@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Intervention;
 use App\Models\Activite;
+use App\Models\Notification;
+use APP\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,16 +24,31 @@ class InterventionController extends Controller
     // Créer une intervention
     public function store(Request $request)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'titre'          => 'required|string|max:200',
             'description'    => 'nullable|string',
             'type'           => 'required|in:panne,installation_wifi,installation_camera,maintenance',
             'priorite'       => 'required|in:basse,normale,urgente',
             'visite_requise' => 'required|in:oui,non',
             'id_client'      => 'required|exists:clients,id',
+            'techniciens'    => 'nullable|array',
+            'techniciens.*'  => 'exists:users,id'
         ]);
 
-        $intervention = Intervention::create($request->all());
+        $intervention = Intervention::create([
+            'titre'          => $request->titre,
+            'description'    => $request->description,
+            'type'           => $request->type,
+            'priorite'       => $request->priorite,
+            'visite_requise' => $request->visite_requise,
+            'id_client'      => $request->id_client,
+        ]);
+
+        if ($request->has('techniciens')) {
+            $intervention->techniciens()->sync(
+                $request->techniciens
+            );
+        }
 
         // Enregistrer dans les activites
         Activite::enregistrer(
@@ -62,16 +79,38 @@ class InterventionController extends Controller
     {
         $intervention = Intervention::findOrFail($id);
 
-        $request->validate([
+        $validatedData = $request->validate([
             'titre'          => 'sometimes|string|max:200',
             'description'    => 'nullable|string',
             'type'           => 'sometimes|in:panne,installation_wifi,installation_camera,maintenance',
             'priorite'       => 'sometimes|in:basse,normale,urgente',
             'visite_requise' => 'sometimes|in:oui,non',
             'id_client'      => 'sometimes|exists:clients,id',
+            'techniciens'    => 'nullable|array',
+            'techniciens.*'  => 'exists:users,id',
         ]);
 
-        $intervention->update($request->all());
+        // ✅ Correction : On met à jour uniquement avec les champs validés présents (évite d'écraser par du vide)
+        $intervention->update($request->only([
+            'titre', 'description', 'type', 'priorite', 'visite_requise', 'id_client'
+        ]));
+
+        if ($request->has('techniciens')) {
+            $intervention->techniciens()->sync($request->techniciens);
+            //Notification reçu par le technicien
+            foreach ($request->techniciens as $technicienId) {
+
+                $technicien = User::find($technicienId);
+
+                Notification::create([
+                    'titre' => 'Nouvelle intervention',
+                    'message' =>
+                        'Vous avez été affecté à : ' .
+                        $intervention->titre,
+                    'id_user' => $technicien->id
+                ]);
+            }
+        }
 
         // Enregistrer dans les activites
         Activite::enregistrer(
@@ -112,12 +151,8 @@ class InterventionController extends Controller
         $stats = Intervention::selectRaw(
             'MONTH(created_at) as mois,
              YEAR(created_at) as annee,
-             SUM(CASE WHEN type = "panne"
-                 THEN 1 ELSE 0 END) as pannes,
-             SUM(CASE WHEN type IN (
-                 "installation_wifi",
-                 "installation_camera")
-                 THEN 1 ELSE 0 END) as installations'
+             SUM(CASE WHEN type = "panne" THEN 1 ELSE 0 END) as pannes,
+             SUM(CASE WHEN type IN ("installation_wifi", "installation_camera") THEN 1 ELSE 0 END) as installations'
         )
         ->whereYear('created_at', date('Y'))
         ->groupBy('annee', 'mois')
@@ -138,12 +173,28 @@ class InterventionController extends Controller
         ], 200);
     }
 
+    // Affecter des techniciens
+    public function affecterTechniciens(Request $request, $id)
+    {
+        $request->validate([
+            'techniciens'   => 'required|array',
+            'techniciens.*' => 'exists:users,id' // Sécurisation ajoutée
+        ]);
+
+        $intervention = Intervention::findOrFail($id);
+        $intervention->techniciens()->sync($request->techniciens);
+
+        return response()->json([
+            'message' => 'Techniciens affectés'
+        ]);
+    }
+
     // Interventions du technicien connecté
     public function mesTaches()
     {
         $interventions = Intervention::with(['client'])
             ->whereHas('techniciens', function ($query) {
-                $query->where('id_user', Auth::id());
+                $query->where('user_id', Auth::id()); // Assure-toi que le pivot utilise bien 'user_id'
             })
             ->where('statut', '!=', 'archive')
             ->orderBy('created_at', 'desc')

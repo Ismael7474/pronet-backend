@@ -11,9 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('historiques', function (Blueprint $table) {
+        Schema::create('notifications', function (Blueprint $table) {
             $table->id();
+            $table->string('titre');
+            $table->text('message');
+            $table->boolean('lu')->default(false);
             $table->timestamps();
+            $table->foreignId('id_user')
+            ->nullable()
+            ->constrained('users')
+            ->onDelete('cascade');
         });
     }
 
@@ -22,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('historiques');
+        Schema::dropIfExists('notifications');
     }
 };

@@ -53,7 +53,7 @@ class DashboardController extends Controller
         // Abonnements expirants
         $abonnements_expirants = Abonnement::with('client')
                                            ->expirantDans(15)
-                                           ->orderBy('date_fin')
+                                           ->orderBy('date_expiration', 'asc')
                                            ->take(5)
                                            ->get();
 

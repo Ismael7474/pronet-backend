@@ -10,6 +10,8 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AbonnementController;
 use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotificationController;
 
 // Routes publiques (sans authentification)
 Route::post('/login', [AuthController::class, 'login']);
@@ -24,6 +26,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard (gérant uniquement)
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
+    // Users (gérant uniquement)
+    Route::apiResource('users', UserController::class);
+
     // Clients (gérant uniquement)
     Route::apiResource('clients', ClientController::class);
     Route::get('/clients/search', [ClientController::class, 'search']);
@@ -32,6 +37,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('interventions', InterventionController::class);
     Route::put('/interventions/{id}/statut', [InterventionController::class, 'changerStatut']);
     Route::get('/interventions/statistiques', [InterventionController::class, 'statistiques']);
+    Route::post(
+    '/interventions/{id}/affecter',
+    [InterventionController::class,
+     'affecterTechniciens']
+    );
+
+    //Notifications
+    Route::get('/notifications',[NotificationController::class, 'index']);
+    Route::put('/notifications/{id}/lire',[NotificationController::class, 'marquerCommeLue']);
+    Route::put('/notifications/lire-toutes',[NotificationController::class, 'toutMarquerCommeLu']);
 
     // Routes technicien
     Route::get('/mes-taches', [InterventionController::class, 'mesTaches']);

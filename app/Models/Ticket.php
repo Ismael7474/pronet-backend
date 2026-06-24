@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Ticket extends Model
 {
     protected $fillable = [
-        'client_id',
+        'id_client',
         'type_wifi',
         'nombre_ticket',
         'prix_unitaire',
@@ -16,7 +16,7 @@ class Ticket extends Model
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'id_client');
     }
 
 

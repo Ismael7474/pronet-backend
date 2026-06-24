@@ -6,17 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class RapportIntervention extends Model
 {
-    public $timestamps = false;
-
-    protected $fillable = [
-        'id_intervention',
-        'id_user',
-        'travail_effectue',
-        'resultat',
-        'observations',
-        'duree_intervention',
-    ];
-
     // Un rapport appartient à une intervention
     public function intervention()
     {

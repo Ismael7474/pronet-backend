@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('nom', 100);
             $table->string('telephone', 20)->unique();
-            $table->string('email', 150)->nulable();
+            $table->string('email', 150)->nullable();
             $table->string('adresse', 255)->nullable();
-            $table->enum('type', ['particulier', 'entreprise'])->default('particulier');
+            $table->enum('type_client', ['particulier', 'entreprise'])->default('particulier');
             $table->string('localisation_url', 255)->nullable();
             $table->timestamps();
         });

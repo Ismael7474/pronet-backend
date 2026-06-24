@@ -9,15 +9,15 @@ class Abonnement extends Model
     protected $fillable = [
         'id_client',
         'type_abonnement',
-        'prix_mensuel',
+        'montant',
         'date_debut',
-        'date_fin',
+        'date_expiration',
         'statut',
     ];
 
     protected $casts = [
         'date_debut' => 'date',
-        'date_fin'   => 'date',
+        'date_expiration'   => 'date',
     ];
 
     // Un abonnement appartient à un client
@@ -30,14 +30,14 @@ class Abonnement extends Model
     public function scopeExpirantDans($query, $jours)
     {
         return $query->where('statut', 'actif')
-                     ->whereDate('date_fin', '<=', now()->addDays($jours))
-                     ->whereDate('date_fin', '>=', now());
+                     ->whereDate('date_expiration', '<=', now()->addDays($jours))
+                     ->whereDate('date_expiration', '>=', now());
     }
 
     // Scope abonnements expirés
     public function scopeExpires($query)
     {
         return $query->where('statut', 'actif')
-                     ->whereDate('date_fin', '<', now());
+                     ->whereDate('date_expiration', '<', now());
     }
 }

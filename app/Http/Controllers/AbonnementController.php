@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Abonnement;
 use App\Models\Activite;
 use Illuminate\Http\Request;
+use app\Models\Notification;
 
 class AbonnementController extends Controller
 {
@@ -23,10 +24,10 @@ class AbonnementController extends Controller
     {
         $request->validate([
             'id_client'       => 'required|exists:clients,id',
-            'type_abonnement' => 'required|in:wifi_starlink,camera,mixte',
-            'prix_mensuel'    => 'required|numeric|min:0',
+            'type_abonnement' => 'required|in:wifi_starlink,wifi_box',
+            'montant'    => 'required|numeric|min:0',
             'date_debut'      => 'required|date',
-            'date_fin'        => 'required|date|after:date_debut',
+            'date_expiration'        => 'required|date|after:date_debut',
         ]);
 
         $abonnement = Abonnement::create($request->all());
@@ -56,11 +57,11 @@ class AbonnementController extends Controller
         $abonnement = Abonnement::findOrFail($id);
 
         $request->validate([
-            'type_abonnement' => 'sometimes|in:wifi_starlink,camera,mixte',
-            'prix_mensuel'    => 'sometimes|numeric|min:0',
+            'type_abonnement' => 'sometimes|in:wifi_starlink,wifi_box',
+            'montant'    => 'sometimes|numeric|min:0',
             'date_debut'      => 'sometimes|date',
-            'date_fin'        => 'sometimes|date|after:date_debut',
-            'statut'          => 'sometimes|in:actif,expirant,expire,historique',
+            'date_expiration'        => 'sometimes|date|after:date_debut',
+            'statut'          => 'sometimes|in:actif,expirant,expire,suspendu',
         ]);
 
         $abonnement->update($request->all());
@@ -83,20 +84,20 @@ class AbonnementController extends Controller
 
         $request->validate([
             'date_debut' => 'required|date',
-            'date_fin'   => 'required|date|after:date_debut',
-            'prix_mensuel' => 'sometimes|numeric|min:0',
+            'date_expiration'   => 'required|date|after:date_debut',
+            'montant' => 'sometimes|numeric|min:0',
         ]);
 
         // Archiver l'ancien
-        $ancien->update(['statut' => 'historique']);
+        $ancien->update(['statut' => 'suspendu']);
 
         // Créer le nouveau
         $nouveau = Abonnement::create([
             'id_client'       => $ancien->id_client,
             'type_abonnement' => $ancien->type_abonnement,
-            'prix_mensuel'    => $request->prix_mensuel ?? $ancien->prix_mensuel,
+            'montant'    => $request->montant ?? $ancien->montant,
             'date_debut'      => $request->date_debut,
-            'date_fin'        => $request->date_fin,
+            'date_expiration'        => $request->date_expiration,
             'statut'          => 'actif',
         ]);
 
@@ -116,7 +117,7 @@ class AbonnementController extends Controller
     {
         $expirants = Abonnement::with('client')
                                ->expirantDans(15)
-                               ->orderBy('date_fin')
+                               ->orderBy('date_expiration')
                                ->get();
 
         return response()->json($expirants, 200);
@@ -125,22 +126,81 @@ class AbonnementController extends Controller
     // Mettre à jour les statuts automatiquement
     public function mettreAJourStatuts()
     {
-        // Expirés
-        Abonnement::where('statut', 'actif')
-                  ->whereDate('date_fin', '<', now())
-                  ->update(['statut' => 'expire']);
+        // Abonnements expirés
+        Abonnement::whereIn('statut', ['actif', 'expirant'])
+            ->whereDate('date_expiration', '<', now())
+            ->update([
+                'statut' => 'expire'
+            ]);
 
-        // Expirants dans 15 jours
-        Abonnement::where('statut', 'actif')
-                  ->whereDate('date_fin', '<=', now()->addDays(15))
-                  ->whereDate('date_fin', '>=', now())
-                  ->update(['statut' => 'expirant']);
+        // Ceux qui arrivent à 7 jours
+        $abonnements = Abonnement::with('client')
+            ->where('statut', 'actif')
+            ->whereDate('date_expiration', '<=', now()->addDays(7))
+            ->whereDate('date_expiration', '>=', now())
+            ->get();
+
+        foreach ($abonnements as $abonnement) {
+
+            // Passage à expirant
+            $abonnement->update([
+                'statut' => 'expirant'
+            ]);
+
+            // Notification interne
+            Notification::create([
+                'titre' => 'Abonnement expirant',
+                'message' => 'L\'abonnement de '
+                    . $abonnement->client->nom .
+                    ' expire dans 7 jours.',
+                'type' => 'abonnement',
+                'lu' => false
+            ]);
+
+            // WhatsApp
+            $numero = $abonnement->client->telephone;
+
+            $message =
+                "Bonjour {$abonnement->client->nom}, "
+                ."votre abonnement internet expire le "
+                .$abonnement->date_expiration
+                .". Merci de penser à son renouvellement.";
+
+            $lienWhatsapp =
+                "https://wa.me/226{$numero}?text="
+                . urlencode($message);
+
+            // Ici plus tard on utilisera Twilio
+            // ou WhatsApp Business API
+        }
 
         return response()->json([
-            'message' => 'Statuts mis à jour avec succès'
-        ], 200);
+            'message' => 'Statuts mis à jour'
+        ]);
     }
+    public function verifierExpirations()
+    {
+            $abonnements = Abonnement::with('client')
+                ->where('statut', 'actif')
+                ->whereDate('date_expiration', now()->addDays(7))
+                ->get();
 
+            foreach ($abonnements as $abonnement) {
+
+                Notification::create([
+                    'titre' => 'Abonnement expirant',
+                    'message' =>
+                        $abonnement->client->nom .
+                        ' expire dans 7 jours'
+                ]);
+
+                // futur envoi WhatsApp ici
+            }
+
+            return response()->json([
+                'message' => 'Vérification terminée'
+            ]);
+        }
     // Supprimer un abonnement
     public function destroy($id)
     {

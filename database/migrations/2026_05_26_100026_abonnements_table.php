@@ -26,7 +26,7 @@ return new class extends Migration
             $table->enum('statut', [
                 'actif',
                 'expirant',
-                'expiré',
+                'expire',
                 'suspendu'
             ])->default('actif');
             $table->timestamps();

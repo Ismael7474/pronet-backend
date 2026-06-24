@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Activite extends Model
 {
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'id_user',
@@ -51,7 +51,7 @@ class Activite extends Model
             'id_client'       => $id_client,
             'action'          => $action,
             'module'          => $module,
-            'created_at'      => now(),
+            'created_at'      => now()
         ]);
     }
 }

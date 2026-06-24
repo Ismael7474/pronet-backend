@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RapportVisite;
 use App\Models\Intervention;
+use App\Models\Notification;
 use App\Models\Activite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,17 +13,19 @@ class RapportVisiteController extends Controller
 {
     // Liste tous les rapports de visite
     public function index()
-    {
-        $rapports = RapportVisite::with(['intervention', 'user'])
-                                 ->orderBy('created_at', 'desc')
-                                 ->get();
+            {$rapports = RapportVisite::with([
+            'intervention.client',
+            'user'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         return response()->json($rapports, 200);
     }
 
     // Créer un rapport de visite
     public function store(Request $request)
-    {
+    {   $intervention = Intervention::findOrFail($request->id_intervention);
         $request->validate([
             'id_intervention'     => 'required|exists:interventions,id',
             'observations'        => 'required|string',
@@ -51,6 +54,13 @@ class RapportVisiteController extends Controller
             'estimation_cout'     => $request->estimation_cout,
             'faisable'            => $request->faisable,
             'created_at'          => now(),
+        ]);
+        Notification::create([
+            'titre' => 'Nouveau rapport de visite',
+            'message' =>
+            Auth::user()->nom .
+            ' a soumis un rapport pour l\'intervention : ' .
+            $intervention->titre
         ]);
 
         // Mettre à jour le statut de l'intervention
